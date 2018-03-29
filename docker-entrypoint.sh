@@ -48,13 +48,10 @@ for CLIENT_CONF in ${BACKUP_CLIENTS}; do
 done
 
 echo
-echo "* Use one of the following keys for your client's known_hosts file"
-for keytype in rsa dsa ecdsa ed25519; do
-  echo
-  echo -n "  "
-  cat /data/ssh-host-keys/ssh_host_${keytype}_key.pub
-done
-echo
+echo "* Use one of the following key configuration for your client:"
+echo "----------------------------------------------------------------------------------------"
+cat /data/ssh-host-keys/ssh_host_rsa_key.pub | awk '{ print "BACKUP_SERVER_PUBLIC_KEY="$1":"$2 }'
+echo "----------------------------------------------------------------------------------------"
 
 echo "Starting sshd"
 /usr/sbin/sshd -p 22 -D -E /proc/1/fd/1 -o LogLevel=${SSHD_LOG_LEVEL:-info} -o PasswordAuthentication=no
