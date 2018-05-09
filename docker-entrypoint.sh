@@ -30,25 +30,24 @@ echo
 echo "* Setting up client access"
 if [ -z "${BACKUP_CLIENTS}" ]; then
   echo "Please set BACKUP_CLIENTS with a list of clients that are allowed to backup to this backup server"
-  exit 1
+else
+	for CLIENT_CONF in ${BACKUP_CLIENTS}; do
+	  IFS=':' CLIENT_CONF_PARTS=(${CLIENT_CONF})
+	  if [ ${#CLIENT_CONF_PARTS[@]} -ne 3 ]; then
+	    echo "The client entry must contain exact 3 values, separated by colon: ${CLIENT_CONF}"
+	    exit 1
+	  fi
+	  CLIENT="${CLIENT_CONF_PARTS[0]}"
+	  CLIENT_KEY="${CLIENT_CONF_PARTS[1]} ${CLIENT_CONF_PARTS[2]} ${CLIENT}"
+	  echo "* Adding client ${CLIENT}"
+	  echo "command=\"/usr/local/bin/backup_shell.sh ${CLIENT}\",no-port-forwarding,no-X11-forwarding,no-pty ${CLIENT_KEY}" >> /home/backup/.ssh/authorized_keys
+	  mkdir -p /data/backup/${CLIENT}
+	  chown backup.backup /data/backup/${CLIENT}
+	done
 fi
 
-for CLIENT_CONF in ${BACKUP_CLIENTS}; do
-  IFS=':' CLIENT_CONF_PARTS=(${CLIENT_CONF})
-  if [ ${#CLIENT_CONF_PARTS[@]} -ne 3 ]; then
-    echo "The client entry must contain exact 3 values, separated by colon: ${CLIENT_CONF}"
-    exit 1
-  fi
-  CLIENT="${CLIENT_CONF_PARTS[0]}"
-  CLIENT_KEY="${CLIENT_CONF_PARTS[1]} ${CLIENT_CONF_PARTS[2]} ${CLIENT}"
-  echo "* Adding client ${CLIENT}"
-  echo "command=\"/usr/local/bin/backup_shell.sh ${CLIENT}\",no-port-forwarding,no-X11-forwarding,no-pty ${CLIENT_KEY}" >> /home/backup/.ssh/authorized_keys
-  mkdir -p /data/backup/${CLIENT}
-  chown backup.backup /data/backup/${CLIENT}
-done
-
 echo
-echo "* Use one of the following key configuration for your client:"
+echo "* Use the following key configuration for your client:"
 echo "----------------------------------------------------------------------------------------"
 cat /data/ssh-host-keys/ssh_host_rsa_key.pub | awk '{ print "BACKUP_SERVER_PUBLIC_KEY="$1":"$2 }'
 echo "----------------------------------------------------------------------------------------"
