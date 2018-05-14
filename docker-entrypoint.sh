@@ -52,5 +52,5 @@ echo "--------------------------------------------------------------------------
 cat /data/ssh-host-keys/ssh_host_rsa_key.pub | awk '{ print "BACKUP_SERVER_PUBLIC_KEY="$1":"$2 }'
 echo "----------------------------------------------------------------------------------------"
 
-echo "Starting sshd"
-/usr/sbin/sshd -p 22 -D -E /proc/1/fd/1 -o LogLevel=${SSHD_LOG_LEVEL:-info} -o PasswordAuthentication=no
+echo "Starting supervisord"
+supervisord -c /etc/supervisord.conf
