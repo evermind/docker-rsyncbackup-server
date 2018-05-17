@@ -24,25 +24,29 @@ def check_backup(dir,host,vol,backup,recalculate_size):
 	else:
 		if not recalculate_size:
 			logging.info('(Calculating size later)')
-			return None
-		logging.info('  Calculating backup size')
-		size_total = 0
-		size_delta = 0
-		for root, dirs, files in os.walk(dir):
-			for f in files:
-				file = os.path.join(root, f)
-				size = os.path.getsize(file)
-				size_total += size
-				if os.stat(file).st_nlink == 1:
-					size_delta += size
-		metrics = {
-			'size_total': size_total,
-			'size_delta': size_delta
-		}
-		with open(metricsfile,'w') as mf:
-			mf.write(json.dumps(metrics))
+			metrics = {
+				'size_total': None,
+				'size_delta': None
+			}
+		else:
+			logging.info('  Calculating backup size')
+			size_total = 0
+			size_delta = 0
+			for root, dirs, files in os.walk(dir):
+				for f in files:
+					file = os.path.join(root, f)
+					size = os.path.getsize(file)
+					size_total += size
+					if os.stat(file).st_nlink == 1:
+						size_delta += size
+			metrics = {
+				'size_total': size_total,
+				'size_delta': size_delta
+			}
+			with open(metricsfile,'w') as mf:
+				mf.write(json.dumps(metrics))
+			logging.info('  The backup is %s with %s of changed files', human_size(metrics['size_total']),  human_size(metrics['size_delta']))
 
-	logging.info('  The backup is %s with %s of changed files', human_size(metrics['size_total']),  human_size(metrics['size_delta']))
 	backup_ts=int(time.mktime(time.strptime(backup,'%Y-%m-%d_%H-%M-%S')))
 	backup_age_hours=math.floor((time.time()-backup_ts)/36)/100 # hours, round to 2 digits
 	return {
@@ -87,11 +91,13 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			status='WARNING'
 			message+=' (>%s h)'%warn_age
 		else:
-		  status='OK'
-		self.do_send(200,{'status':status,'message':message,'metrics': [
-			{'name':'size','unit':'B','value':backup_stats['size_total']},
-			{'name':'delta','unit':'B','value':backup_stats['size_delta']}
-		]})
+			status='OK'
+		response={'status':status,'message':message,'metrics':[]}
+		if backup_stats['size_total'] is not None:
+			response['metrics'].append({'name':'size','unit':'B','value':backup_stats['size_total']})
+		if backup_stats['size_delta'] is not None:
+			response['metrics'].append({'name':'delta','unit':'B','value':backup_stats['size_delta']})
+		self.do_send(200,response)
 	def do_send(self,status,message):
 		self.send_response(status)
 		self.send_header("Content-type", "application/json")
