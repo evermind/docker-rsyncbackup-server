@@ -16,6 +16,8 @@ def get_env(name,default=UNSET):
 def human_size(bytes, units=[' bytes','KB','MB','GB','TB']):
 	return str(bytes) + units[0] if bytes < 1024 else human_size(bytes>>10, units[1:])
 
+current_backup_status={}
+
 def check_backup(dir,host,vol,backup,recalculate_size):
 	metricsfile = os.path.join(dir,'._backup_metrics')
 	if os.path.isfile(metricsfile):
@@ -23,13 +25,13 @@ def check_backup(dir,host,vol,backup,recalculate_size):
 			metrics = json.load(mf)
 	else:
 		if not recalculate_size:
-			logging.info('(Calculating size later)')
+			logging.debug('(Calculating size later)')
 			metrics = {
 				'size_total': None,
 				'size_delta': None
 			}
 		else:
-			logging.info('  Calculating backup size')
+			logging.info('Calculating backup size for %s/%s/%s',host,vol,backup)
 			size_total = 0
 			size_delta = 0
 			for root, dirs, files in os.walk(dir):
@@ -47,18 +49,13 @@ def check_backup(dir,host,vol,backup,recalculate_size):
 				mf.write(json.dumps(metrics))
 			logging.info('  The backup is %s with %s of changed files', human_size(metrics['size_total']),  human_size(metrics['size_delta']))
 
-	backup_ts=int(time.mktime(time.strptime(backup,'%Y-%m-%d_%H-%M-%S')))
-	backup_age_hours=math.floor((time.time()-backup_ts)/36)/100 # hours, round to 2 digits
 	return {
 		'host': host,
 		'vol': vol,
 		'backup': backup,
-		'age_hours': backup_age_hours,
 		'size_total': metrics['size_total'],
 		'size_delta': metrics['size_delta']
 	}
-
-current_backup_status={}
 
 def find_backup_stats(host,volume):
 	if not host in current_backup_status:
@@ -66,7 +63,13 @@ def find_backup_stats(host,volume):
 	host_backup_status=current_backup_status[host]
 	if not volume in host_backup_status:
 		return None
-	return host_backup_status[volume]
+
+	result = dict(host_backup_status[volume].copy())
+	backup_ts=int(time.mktime(time.strptime(result['backup'],'%Y-%m-%d_%H-%M-%S')))
+	backup_age_hours=math.floor((time.time()-backup_ts)/36)/100 # hours, round to 2 digits
+	result['age_hours']=backup_age_hours
+
+	return result
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_GET(self):
@@ -103,6 +106,8 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.send_header("Content-type", "application/json")
 		self.end_headers()
 		self.wfile.write(json.dumps(message))
+	def log_message(self, format, *args):
+		return
 
 def start_http_server():
 	port=int(get_env('SERVER_PORT',8080))
@@ -116,20 +121,21 @@ def start_http_server():
 	server.server_close()
 
 def check_backups(recalculate_size=True):
+	global current_backup_status
 	backupdir=get_env('BACKUP_DIR')
-	logging.info('Processing %s',backupdir)
+	logging.debug('Processing %s',backupdir)
 	new_backup_status={}
 	backup_pattern = re.compile('(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})')
 	for n1 in os.listdir(backupdir):
 		f1 = os.path.join(backupdir,n1)
 		if not os.path.isdir(f1):
 			continue
-		logging.info('Scanning %s',n1)
+		logging.debug('Scanning %s',n1)
 		for n2 in os.listdir(f1):
 			f2 = os.path.join(f1,n2)
 			if not os.path.isdir(f2):
 				continue
-			logging.info('Scanning %s/%s',n1,n2)
+			logging.debug('Scanning %s/%s',n1,n2)
 			last_backup = None
 			last_backup_dir = None
 			for n3 in os.listdir(f2):
@@ -143,18 +149,24 @@ def check_backups(recalculate_size=True):
 					last_backup = n3
 					last_backup_dir = f3
 			if last_backup is None:
-				logging.info('  no backup found')
+				logging.debug('  no backup found')
 			else:
-				logging.info('  last backup: %s',last_backup)
+				logging.debug('  last backup: %s',last_backup)
 				try:
 					result = check_backup(last_backup_dir,n1,n2,last_backup,recalculate_size)
 					if result is not None:
 						if not result['host'] in new_backup_status:
 							new_backup_status[result['host']]={}
 						new_backup_status[result['host']][result['vol']]=result
+						old_status=find_backup_stats(result['host'],result['vol'])
+						# Add the new status temporary to current_backup_status so that it can be seen as long as the scanning is in progress
+						if not result['host'] in current_backup_status:
+							current_backup_status[result['host']]={}
+						current_backup_status[result['host']][result['vol']]=result
+						if old_status is None or old_status['backup']!=result['backup']:
+							logging.info("Added new backup: %s/%s/%s",result['host'],result['vol'],result['backup'])
 				except:
 					logging.exception("Unexpected error")
-	global current_backup_status
 	current_backup_status=new_backup_status
 
 def check_backups_scheduler():
@@ -162,12 +174,12 @@ def check_backups_scheduler():
 		check_backups()
 	except:
 		logging.warn("Unexpected error: %s", sys.exc_info()[0])
-	t=Timer(300, check_backups, ())
+	t=Timer(300, check_backups_scheduler, ())
 	t.daemon=True
 	t.start()
 
 def start_scheduler():
-	t=Timer(5, check_backups, ())
+	t=Timer(5, check_backups_scheduler, ())
 	t.daemon=True
 	t.start()
 
