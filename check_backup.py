@@ -3,6 +3,7 @@
 import sys, os, stat, logging, re, json, datetime, time, math
 from threading import Timer
 import BaseHTTPServer, urlparse
+from SocketServer import ThreadingMixIn
 
 UNSET = object()
 def get_env(name,default=UNSET):
@@ -109,10 +110,13 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def log_message(self, format, *args):
 		return
 
+class ThreadedHTTPServer(ThreadingMixIn, BaseHTTPServer.HTTPServer):
+	"""Handle requests in a separate thread."""
+
 def start_http_server():
 	port=int(get_env('SERVER_PORT',8080))
 	logging.info('Starting HTTP server on port %s',port)
-	server=BaseHTTPServer.HTTPServer(('', port), RequestHandler)
+	server=ThreadedHTTPServer(('', port), RequestHandler)
 	try:
 		server.serve_forever()
 	except KeyboardInterrupt:
