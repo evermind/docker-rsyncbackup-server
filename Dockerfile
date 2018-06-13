@@ -1,6 +1,6 @@
 FROM alpine:3.6
 
-RUN apk add --no-cache --update attr bash openssh-server shadow rsync supervisor python && \
+RUN apk add --no-cache --update attr bash openssh-server shadow rsync supervisor python py-requests py-dateutil && \
     useradd -d /home/backup -s /bin/bash backup &&\ 
     usermod -p '*' backup && \
     usermod -p '*' root
