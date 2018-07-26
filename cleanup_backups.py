@@ -167,9 +167,13 @@ def mark_backup_delatable(backupdir):
 def delete_old_backups(dir,intervals):
 	backups = scan_dir(dir,default_format)
 	backups_keep = get_backups_to_keep(backups, intervals)
+	deleted_some = False
 	for backup in backups:
 		if not backup in backups_keep:
 			mark_backup_delatable(os.path.join(dir,datetime.strftime(backup,default_format)))
+			deleted_some=True
+	if not deleted_some:
+		log.warn("Nothing to delete.")
 	for deldirname in os.listdir(dir):
 		if not deldirname.endswith(".delete"):
 			continue
@@ -225,7 +229,7 @@ def run_cleanup(backupdir,intervals):
 			delete_old_backups(f2,intervals)
 
 def main():
-	log.basicConfig(level=log.INFO)
+	logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 	backupdir=get_env('BACKUP_DIR')
 	intervals = parse_intervals(get_env('BACKUP_KEEP_INTERVALS',default_intervals))
 	schedule_time = parse_schedule(get_env('BACKUP_DELETE_SCHEDULE',default_schedule))
