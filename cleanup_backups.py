@@ -36,7 +36,9 @@ def test():
 	for b in backups:
 		print b
 
-def get_backups_to_keep(backups, intervals, now = datetime.now()):
+def get_backups_to_keep(backups, intervals, now = None):
+	if now is None:
+		now = datetime.now()
 	# keep at least 1 backup
 	if len(backups)<2:
 		return backups
