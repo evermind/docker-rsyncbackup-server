@@ -14,4 +14,6 @@ ADD supervisord.conf /etc/supervisord.conf
 VOLUME /data
 EXPOSE 22
 
+ENV BACKUP_DIR=/data/backup
+
 CMD /usr/local/bin/docker-entrypoint.sh

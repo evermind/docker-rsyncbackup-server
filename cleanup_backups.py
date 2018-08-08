@@ -7,6 +7,7 @@ import re
 import logging as log
 import os, sys
 import shutil
+from sys import argv
 
 default_intervals = "1h 12h 1d 2d 3d 4d 5d 6d 7d 9d 11d 14d 21d 28d 35d"
 default_format = "%Y-%m-%d_%H-%M-%S"
@@ -34,7 +35,7 @@ def test():
 		backups = get_backups_to_keep(backups,intervals,dp.parse("2017-03-%s 06:00:00"%i))
 		backups.append(dp.parse("2017-03-%s 22:00:00"%i))
 	for b in backups:
-		print b
+		print (b)
 
 def get_backups_to_keep(backups, intervals, now = None):
 	if now is None:
@@ -231,9 +232,18 @@ def run_cleanup(backupdir,intervals):
 			delete_old_backups(f2,intervals)
 
 def main():
-	log.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+	log.basicConfig(format='%(asctime)s %(message)s', level=log.INFO)
+	if len(argv)!=2 or argv[1] not in ['now','schedule']:
+		log.error("Usage: %s run|schedule"%argv[0])
+		sys.exit(os.EX_USAGE)
+
 	backupdir=get_env('BACKUP_DIR')
 	intervals = parse_intervals(get_env('BACKUP_KEEP_INTERVALS',default_intervals))
+
+	if argv[1]=='now':
+		run_cleanup(backupdir,intervals)
+		return
+
 	schedule_time = parse_schedule(get_env('BACKUP_DELETE_SCHEDULE',default_schedule))
 
 	schedule_cleanup(schedule_time['hour'],schedule_time['minute'],backupdir,intervals)
