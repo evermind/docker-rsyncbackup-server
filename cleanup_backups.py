@@ -231,7 +231,7 @@ def run_cleanup(backupdir,intervals):
 			delete_old_backups(f2,intervals)
 
 def main():
-	logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+	log.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 	backupdir=get_env('BACKUP_DIR')
 	intervals = parse_intervals(get_env('BACKUP_KEEP_INTERVALS',default_intervals))
 	schedule_time = parse_schedule(get_env('BACKUP_DELETE_SCHEDULE',default_schedule))
