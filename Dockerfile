@@ -14,6 +14,6 @@ ADD supervisord.conf /etc/supervisord.conf
 VOLUME /data
 EXPOSE 22
 
-ENV BACKUP_DIR=/data/backup
+ENV BACKUP_DIR=/data/backup BACKUP_KEEP_INTERVALS="1h 12h 1d 2d 3d 4d 5d 6d 7d 9d 11d 14d 21d 28d 35d" BACKUP_DELETE_SCHEDULE="07:00"
 
 CMD /usr/local/bin/docker-entrypoint.sh

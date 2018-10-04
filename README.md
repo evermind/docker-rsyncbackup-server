@@ -31,10 +31,22 @@ Volumes:
 Environment variables:
 * BACKUP_CLIENTS a list of whitespace separated "client_name:key_type:ssh_key" entries for all clients access to this backup server
 * SSHD_LOG_LEVEL (default: info) The log level for ssh daemon (for debuging purposes)
+* BACKUP_DELETE_SCHEDULE (default: 07:00) defines the time when backups are deleted
+* BACKUP_KEEP_INTERVALS (default: 1h 12h 1d 2d 3d 4d 5d 6d 7d 9d 11d 14d 21d 28d 35d) defines a list of intervals to keep backups for. Must be in ascending order
+
+### Deleting old backups
+
+Once every day, old backups are deleted. To determine which backups should be kept, an algorithm parses BACKUP_KEEP_INTERVALS and calculates which backups are required so that in each interval exists at least one backup at any time.
+
+### Monitoring
+
+A monitoring endpoint is exposed via http at port 8080 under /backups/CLIENT_NAME/BACKUP_VOLUME. The current backup status is exported as JSON.
+
+TODO: Add link to nagios plugin to read the JSON output
 
 ## Current state / Roadmap
 
 * Backup server (SSH) - DONE
-* Automatic deletion of old backups - OPEN
-* Monitoring - OPEN
+* Automatic deletion of old backups - DONE
+* Monitoring - DONE
 * Additional deduplication using http://rmlint.readthedocs.io/en/latest/ - OPEN

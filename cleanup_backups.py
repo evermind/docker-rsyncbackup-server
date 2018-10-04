@@ -238,13 +238,16 @@ def main():
 		sys.exit(os.EX_USAGE)
 
 	backupdir=get_env('BACKUP_DIR')
-	intervals = parse_intervals(get_env('BACKUP_KEEP_INTERVALS',default_intervals))
+	raw_intervals = get_env('BACKUP_KEEP_INTERVALS',default_intervals)
+	intervals = parse_intervals(raw_intervals)
 
 	if argv[1]=='now':
 		run_cleanup(backupdir,intervals)
 		return
 
 	schedule_time = parse_schedule(get_env('BACKUP_DELETE_SCHEDULE',default_schedule))
+
+	log.info("Keeping backup for intervals %s",raw_intervals)
 
 	schedule_cleanup(schedule_time['hour'],schedule_time['minute'],backupdir,intervals)
 
